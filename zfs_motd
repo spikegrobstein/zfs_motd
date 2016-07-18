@@ -1,5 +1,10 @@
 #! /usr/bin/env bash
 
+scriptdir=$( dirname "$0" )
+scriptdir=$( readlink -f "$scriptdir" )
+
+pushd "$scriptdir" &> /dev/null
+
 . ./lib.bash
 
 motd_file=/etc/motd
