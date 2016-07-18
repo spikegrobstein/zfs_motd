@@ -3,9 +3,7 @@
 . ./lib.bash
 
 motd_file=/etc/motd
-
 motd_d_dir=${1:-/etc/motd.d}
-
 tail_outfile="$motd_d_dir/5_zfs_info"
 
 # first, output to the fail file
