@@ -1,10 +1,3 @@
-create_motd() {
-  local dir=$1
-  local outfile=$2
-
-  cat "$dir"/* > "$outfile"
-}
-
 color::get() {
   local color=$1
 
@@ -109,10 +102,19 @@ header() {
   color::echo "ucyan" "$@"
 }
 
-storage_info() {
-  header "Filesystems:"
+create_motd() {
+  local dir=$1
+  local outfile=$2
 
-  zfs list
+  cat "$dir"/* > "$outfile"
+}
+
+storage_info() {
+  header "Pools:"
+
+  for fs in $( get_all_zfs_pools ); do
+    draw_graph_bar_for "$fs"
+  done | column -t -s $'\t'
 
   echo ""
 
@@ -121,6 +123,12 @@ storage_info() {
     | grep -E '\bcompressratio' \
     | awk '{ print $1 " " $3 }' \
     | column -t
+}
+
+get_all_zfs_pools() {
+  zpool list \
+    | tail -n +2 \
+    | awk '{ print $1 }'
 }
 
 get_free_space_fields() {
@@ -156,21 +164,37 @@ draw_graph_bar() {
   local suffix=$3
 
   local width=40
-  local blockcount=$( bc <<< "$width * ($percent / 100.0) / 1")
+  local blockcount=$( bc -l <<< "$width * ($percent / 100)" )
+  blockcount=$( printf '%.0f' "$blockcount" )
 
-  printf "%s [" "$title"
-  
-  if [[ "$blockcount" -gt 0 ]]; then
-    printf "#%.0s" $( seq 1 $blockcount )
+  local bar_color=$( color::get green )
+
+  if [[ "$percent" -gt 85 ]]; then
+    bar_color=$( color::get red )
+  elif [[ "$percent" -gt 65 ]]; then
+    bar_color=$( color::get yellow )
   fi
 
+
+  printf "%s\t[$( color::get green )" "$title"
+  
+  if [[ "$blockcount" -gt 0 ]]; then
+    printf "\u2588%.0s" $( seq 1 $blockcount )
+  fi
+
+  printf "$( color::off )"
   printf " %.0s" $( seq 1 $(( width - blockcount )))
-  printf "] %s%% %s\n" "$percent" "$suffix"
+  printf "] %2s%% %s\n" "$percent" "$suffix"
 }
 
 draw_graph_bar_for() {
   local path=$1
 
-  echo "foo"
+  local fields=$( get_free_space_fields "$path" )
+  local percent=$( get_percent_space_from "$fields" )
+  local total=$( get_total_space_from "$fields" )
+  local used=$( get_used_space_from "$fields" )
+
+  draw_graph_bar "$path" "$percent" "${used}/${total}"
 }
 
