@@ -2,14 +2,15 @@
 
 . ./lib.bash
 
-final_outfile=/etc/motd
+motd_file=/etc/motd
 
-tail_outfile="/etc/motd.d/tail"
-indir=/etc/motd.d
+motd_d_dir=${1:-/etc/motd.d}
+
+tail_outfile="$motd_d_dir/5_zfs_info"
 
 # first, output to the fail file
 
 storage_info > "$tail_outfile"
 
-create_motd "$indir" "$final_outfile"
+create_motd "$motd_d_dir" "$motd_file"
 
