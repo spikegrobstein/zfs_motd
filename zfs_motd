@@ -1,0 +1,15 @@
+#! /usr/bin/env bash
+
+. ./lib.bash
+
+final_outfile=/etc/motd
+
+tail_outfile="/etc/motd.d/tail"
+indir=/etc/motd.d
+
+# first, output to the fail file
+
+storage_info > "$tail_outfile"
+
+create_motd "$indir" "$final_outfile"
+
