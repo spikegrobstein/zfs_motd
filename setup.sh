@@ -10,7 +10,7 @@ hostname=$( hostname -s )
 
 mkdir -p "$motd_d_dir"
 
-if which figlet &> /dev/null; then
+if type figlet &> /dev/null; then
   figlet -f smslant "$hostname" > "$motd_headerfile"
 else
   echo "$hostname" > "$motd_headerfile"

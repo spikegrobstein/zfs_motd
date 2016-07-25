@@ -106,15 +106,18 @@ create_motd() {
   local dir=$1
   local outfile=$2
 
-  cat "$dir"/* > "$outfile"
+  cat "$dir"/* | grep -v '^# zfs_motd' > "$outfile"
 }
 
 storage_info() {
+  IFS=$'\t\n'
   header "Pools:"
 
   for fs in $( get_all_zfs_pools ); do
     draw_graph_bar_for "$fs"
-  done | column -t -s $'\t'
+  done \
+    | column -t -s $'\t' \
+    | indent
 
   echo ""
 
@@ -122,26 +125,27 @@ storage_info() {
   zfs get all \
     | grep -E '\bcompressratio' \
     | awk '{ print $1 " " $3 }' \
-    | column -t
+    | column -t \
+    | indent
+
+  echo "# zfs_motd generated at: $( date )"
 }
 
 get_all_zfs_pools() {
-  zpool list \
-    | tail -n +2 \
-    | awk '{ print $1 }'
+  zpool list -pH \
+    | awk -F $'\t' '{ print $1 }'
 }
 
 get_free_space_fields() {
   local path=$1
 
-  df -h "$path" \
-    | tail -n 1
+  zpool list -pH "$path"
 }
 
 get_total_space_from() {
   local line=$1
 
-  awk '{ print $2 }' <<< "$line"
+  awk -F $'\t' '{ print $2 }' <<< "$line"
 }
 
 get_used_space_from() {
@@ -152,10 +156,41 @@ get_used_space_from() {
 
 get_percent_space_from() {
   local line=$1
+  local size=$( awk '{ print $2 }' <<< "$line" )
+  local used=$( awk '{ print $3 }' <<< "$line" )
 
-  echo "$line" \
-    | awk '{ print $5 }' \
-    | grep -o -E '^[[:digit:]]+'
+  local percent=$(
+    bc -l <<< "$used / $size * 100" \
+      | awk -F '.' '{ print $1 }'
+  )
+
+  if [[ -z "$percent" ]]; then
+    percent=0
+  fi
+
+  echo "$percent"
+}
+
+# convert from bytes to human readable size
+hr_size() {
+  local sizes=("B" "KB" "MB" "GB" "TB" "PB")
+  local size=$1
+
+  for i in $( seq 0 5 ); do
+    if [[ "$( printf "%.0f" "$size" )" -lt 1024 ]]; then
+      break
+    fi
+
+    size=$( bc -l <<< "$size / 1024" )
+  done
+
+  printf "%.1f%s" "$size" "${sizes[$i]}"
+}
+
+indent() {
+  while read LINE; do
+    echo "  $LINE"
+  done
 }
 
 draw_graph_bar() {
@@ -194,6 +229,9 @@ draw_graph_bar_for() {
   local percent=$( get_percent_space_from "$fields" )
   local total=$( get_total_space_from "$fields" )
   local used=$( get_used_space_from "$fields" )
+
+  total=$( hr_size "$total" )
+  used=$( hr_size "$used" )
 
   draw_graph_bar "$path" "$percent" "${used}/${total}"
 }
