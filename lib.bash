@@ -102,6 +102,18 @@ header() {
   color::echo "ucyan" "$@"
 }
 
+header2() {
+  color::echo "bcyan" "  $@"
+}
+
+fs_header() {
+  local fs_name=$1
+  local status_color=$2
+  local status=$3
+
+  printf "  $(color::get 'bwhite')%s [$(color::unbold)$(color::get "$status_color")%s$(color::get 'bwhite')]:$(color::off)\n" "$fs_name" "$status"
+}
+
 create_motd() {
   local dir=$1
   local outfile=$2
@@ -110,10 +122,11 @@ create_motd() {
 }
 
 storage_info() {
+  local pools=$( get_all_zfs_pools )
   IFS=$'\t\n'
   header "Pools:"
 
-  for fs in $( get_all_zfs_pools ); do
+  for fs in $pools; do
     draw_graph_bar_for "$fs"
   done \
     | column -t -s $'\t' \
@@ -128,7 +141,29 @@ storage_info() {
     | column -t \
     | indent
 
+  echo ""
+
+  header "Status:"
+
+  for fs in $pools; do
+    fs_header "$fs" "green" "ONLINE"
+    scrub_info "$fs" \
+      | indent \
+      | indent
+
+    echo ""
+  done
+
   echo "# zfs_motd generated at: $( date )"
+}
+
+scrub_info() {
+  local pool=$1
+
+  zpool status "$pool" \
+    | grep -A 2 '^  scan: ' \
+    | grep -E '(^        )|(scan: )' \
+    | sed -E 's/^.{8}//'
 }
 
 get_all_zfs_pools() {
