@@ -146,7 +146,10 @@ storage_info() {
   header "Status:"
 
   for fs in $pools; do
-    fs_header "$fs" "green" "ONLINE"
+    local state=$( pool_state "$fs" )
+    local state_color=$( pool_state_color "$state" )
+
+    fs_header "$fs" "$state_color" "$state"
     scrub_info "$fs" \
       | indent \
       | indent
@@ -155,6 +158,23 @@ storage_info() {
   done
 
   echo "# zfs_motd generated at: $( date )"
+}
+
+pool_state() {
+  local pool=$1
+
+  zpool status "$pool" \
+    | grep "state:" \
+    | awk -F ': ' '{ print $2 }'
+}
+
+pool_state_color() {
+  local state=$1
+
+  case "$state" in
+    ONLINE) echo "green" ;;
+    *) echo "red"
+  esac
 }
 
 scrub_info() {
