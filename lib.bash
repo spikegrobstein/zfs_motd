@@ -137,8 +137,9 @@ storage_info() {
   header "Compression Ratios:"
   zfs get all \
     | grep -E '\bcompressratio' \
-    | awk '{ print $1 " " $3 }' \
-    | column -t \
+    | sed -E $'s@[[:space:]][[:space:]]+@\t@g' \
+    | awk -F $'\t'  '{ print $1 "\t" $3 }' \
+    | column -t -s $'\t' \
     | indent
 
   echo ""
