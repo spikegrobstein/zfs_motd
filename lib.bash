@@ -178,13 +178,22 @@ pool_state_color() {
   esac
 }
 
+# ZFS in FreeBSD 13 has changed slightly; `zpool status` does not
+# output a `scan` line unless a scrub has been requested.
 scrub_info() {
   local pool=$1
+  local info
 
-  zpool status "$pool" \
+  info=$( zpool status "$pool" \
     | grep -A 2 '^  scan: ' \
     | grep -E '(^        )|(scan: )' \
-    | sed -E 's/^.{8}//'
+    | sed -E 's/^.{8}//' )
+
+  if [[ -z "$info" ]]; then
+    echo "none requested"
+  else
+    echo "$info"
+  fi
 }
 
 get_all_zfs_pools() {
