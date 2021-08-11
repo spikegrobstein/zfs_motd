@@ -3,11 +3,25 @@
 scriptdir=$( dirname "$0" )
 scriptdir=$( readlink -f "$scriptdir" )
 
+# Set FreeBSD version
+IFS='-' read -r -a freebsd_version < <( uname -r  )
+
+is_bsd_13=0
+if [[ "${freebsd_version[0]}" = *13* ]]; then
+  is_bsd_13=1
+fi
+
 pushd "$scriptdir" &> /dev/null
 
 . ./lib.bash
 
-motd_file=/etc/motd
+# If we're running FreeBSD >= 13,  we need to update a different file
+if (( is_bsd_13 )); then
+	motd_file=/etc/motd.template
+else
+	motd_file=/etc/motd
+fi
+
 motd_d_dir=${1:-/etc/motd.d}
 tail_outfile="$motd_d_dir/5_zfs_info"
 
@@ -17,3 +31,7 @@ storage_info > "$tail_outfile"
 
 create_motd "$motd_d_dir" "$motd_file"
 
+# If we're on FreeBSD 13, we now need to restart the motd service
+if (( is_bsd_13 )); then
+	service motd restart
+fi
